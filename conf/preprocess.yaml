@@ -1,0 +1,12 @@
+preprocess:
+  batch_size: 1000
+  offset: 0
+  test_size: 0.2
+  switches:
+    impute: True
+    encode: True
+    scale: False
+    select: False
+  strategies:
+    impute_numeric: mean
+    impute_categoric: most_frequent

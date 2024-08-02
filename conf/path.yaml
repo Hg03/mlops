@@ -1,0 +1,11 @@
+path:  
+  src: mlops_v1/
+  table: base_data
+  data: data/
+  output: output/
+  split: split/
+  preprocessed: preprocessed/
+  model: model/
+  raw: raw_data.paquet
+  train_file: train.parquet
+  test_file: test.parquet

@@ -1,0 +1,15 @@
+columns:
+  target: PurchaseStatus
+  to_drop: 
+  numeric:
+    - Age
+    - AnnualIncome
+    - NumberOfPurchases
+    - TimeSpentOnWebsite
+  categoric:
+    ordinal:
+      - DiscountsAvailed
+    nominal:
+      - Gender
+      - ProductCategory
+      - LoyaltyProgram
