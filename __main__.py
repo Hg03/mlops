@@ -18,11 +18,13 @@ class purchase_prediction:
         os.makedirs(self.split_path, exist_ok=True)
         self.preprocessed_path = os.path.join(self.output_path, self.configs.path.preprocessed)
         os.makedirs(self.preprocessed_path, exist_ok=True)
+        self.model_path = os.path.join(self.output_path, self.configs.path.model)
     
     def execute_run(self):
-        feature_pipeline_obj = feature_pipeline(self.current_time)
-        # feature_pipeline_obj.run()
-        training_pipeline_obj = training_pipeline(self.current_time)
+        path = {"output":self.output_path, "split":self.split_path, "preprocessed":self.preprocessed_path, "model":self.model_path}
+        feature_pipeline_obj = feature_pipeline(self.current_time, path)
+        feature_pipeline_obj.run()
+        training_pipeline_obj = training_pipeline(self.current_time, path)
         training_pipeline_obj.run()
         
 
