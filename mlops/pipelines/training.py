@@ -4,12 +4,15 @@ from dotenv import load_dotenv
 from comet_ml import Experiment
 import polars as pl
 from xgboost import XGBClassifier
+import joblib
+from sklearn.metrics import accuracy_score, precision_score, recall_score, roc_auc_score
 import os
 
 class training_pipeline:
-    def __init__(self, current_time):
+    def __init__(self, current_time, path):
         self.configs = load_config()
         self.current_time = current_time
+        self.path = path
     
     def load_from_hopsworks(self):
         load_dotenv()
@@ -26,14 +29,13 @@ class training_pipeline:
     def tune_and_train(self):
         comet_ml_api_key = os.getenv("comet_ml_api_key")
         experiment = Experiment(api_key=comet_ml_api_key, project_name="purchase-prediction")
-
-        # Assuming self.train and self.test are Polars DataFrames
         X_train = self.train.drop("purchasestatus")
         y_train = self.train["purchasestatus"]
         X_test = self.test.drop("purchasestatus")
         y_test = self.test["purchasestatus"]
-
-        model = XGBClassifier(n_estimators=10, max_depth=5, learning_rate=0.1, objective="binary:logistic")
+        params = self.configs.training.xgboost
+        experiment.log_parameters(params)
+        model = XGBClassifier(**params)
         
         # Convert Polars DataFrame to numpy for training
         X_train_np = X_train.to_numpy()
@@ -51,16 +53,22 @@ class training_pipeline:
         y_pred_series = pl.Series("pred", y_pred)
         y_test_series = pl.Series("ground_truth", y_test_np)
 
+        scores = {
+            "accuracy": accuracy_score(y_test_series, y_pred_series),
+            "precision": precision_score(y_test_series, y_pred_series),
+            "recall": recall_score(y_test_series, y_pred_series),
+            "roc_auc": roc_auc_score(y_test_series, y_pred_series)
+            }
+        experiment.log_metrics(scores)
         # Add prediction and ground truth columns to the test DataFrame
         debug_df = X_test.with_columns([y_pred_series, y_test_series])
-
         # Log the DataFrame as a CSV to Comet.ml
         experiment.log_table("prediction_debug_table.csv", debug_df.to_pandas())
+        joblib.dump(model, os.path.join(self.path["output"], self.configs.path.model_file))
+        experiment.log_model("model", os.path.join(self.path["model"], self.configs.path.model_file))
         print('logged !!')
 
-        
-        
-        
+
     def run(self):
         train, test = self.load_from_hopsworks()
         print("success loading")
@@ -69,5 +77,3 @@ class training_pipeline:
 
 if __name__ == "__main__":
     pass
-
-        
