@@ -1,4 +1,5 @@
 from config import load_config
+from mlops.my_hopworks.connector import FeatureStoreManager
 from dotenv import load_dotenv
 from supabase import create_client
 from sklearn import model_selection, compose, pipeline, preprocessing, impute
@@ -8,42 +9,18 @@ import hopsworks
 import os
 
 
-class FeatureStoreManager:
-    def __init__(self, api_key_value):
-        self.project = hopsworks.login(api_key_value=api_key_value)
-        self.fs = self.project.get_feature_store()
-        self.mr = self.project.get_model_registry()
-
-    def get_feature_group(self, feature_group_name, version=1):
-        return self.fs.get_feature_group(feature_group_name, version=version)
-
-    def get_or_create_feature_group(self, feature_group_name, version=1, description=None, primary_key=None):
-        return self.fs.get_or_create_feature_group(name=feature_group_name, version=version, description=description, primary_key=primary_key)
-
-    def insert_data_into_feature_group(self, feature_group, data_frame, write_options=None):
-        feature_group.insert(data_frame, write_options=write_options)
-        print('Insert Done')
-
 class feature_pipeline:
-    def __init__(self):
-        load_dotenv()
-        self.url = os.getenv("supabase_url")
-        self.key = os.getenv("supabase_key")
+    def __init__(self, current_time):
         self.configs = load_config()
-        self.make_dir()
+        self.current_time = current_time
     
-    def make_dir(self):
-        self.current_time =  datetime.now().strftime("%Y-%m-%d-%H-%M") + '/'
-        os.makedirs(self.configs.path.output, exist_ok=True)
-        self.output_path = os.path.join(self.configs.path.output, self.current_time)
-        os.makedirs(self.output_path, exist_ok=True)
-        self.split_path = os.path.join(self.output_path, self.configs.path.split)
-        os.makedirs(self.split_path, exist_ok=True)
-        self.preprocessed_path = os.path.join(self.output_path, self.configs.path.preprocessed)
-        os.makedirs(self.preprocessed_path, exist_ok=True)
+
         
     def loader(self):
-        conn = create_client(self.url, self.key)
+        load_dotenv()
+        url = os.getenv("supabase_url")
+        key = os.getenv("supabase_key")
+        conn = create_client(url, key)
         json_data = []
         batch_size = self.configs.preprocess.batch_size
         offset = self.configs.preprocess.offset
@@ -57,6 +34,7 @@ class feature_pipeline:
         self.raw_data = pl.DataFrame(json_data)
         self.raw_data = self.raw_data.drop(["created_at"])
         self.raw_data.write_parquet(os.path.join(self.output_path, self.configs.path.raw))
+        conn.close()
         return self.raw_data
     
     def splitter(self):
