@@ -10,11 +10,10 @@ import os
 
 
 class feature_pipeline:
-    def __init__(self, current_time):
+    def __init__(self, current_time, path):
         self.configs = load_config()
         self.current_time = current_time
-    
-
+        self.path = path
         
     def loader(self):
         load_dotenv()
@@ -33,14 +32,13 @@ class feature_pipeline:
             offset += batch_size
         self.raw_data = pl.DataFrame(json_data)
         self.raw_data = self.raw_data.drop(["created_at"])
-        self.raw_data.write_parquet(os.path.join(self.output_path, self.configs.path.raw))
-        conn.close()
+        self.raw_data.write_parquet(os.path.join(self.path["output"], self.configs.path.raw))
         return self.raw_data
     
     def splitter(self):
         self.train, self.test = model_selection.train_test_split(self.raw_data, test_size=self.configs.preprocess.test_size, shuffle=True)
-        self.train.write_parquet(os.path.join(self.split_path, self.configs.path.train_file))
-        self.test.write_parquet(os.path.join(self.split_path, self.configs.path.test_file))
+        self.train.write_parquet(os.path.join(self.path["split"], self.configs.path.train_file))
+        self.test.write_parquet(os.path.join(self.path["split"], self.configs.path.test_file))
 
         return self.train, self.test
     
@@ -107,8 +105,8 @@ class feature_pipeline:
         return self.preprocessing_pipeline
     
     def prep_the_data(self):
-        train = pl.read_parquet(os.path.join(self.split_path, self.configs.path.train_file))
-        test = pl.read_parquet(os.path.join(self.split_path, self.configs.path.test_file))
+        train = pl.read_parquet(os.path.join(self.path["split"], self.configs.path.train_file))
+        test = pl.read_parquet(os.path.join(self.path["split"], self.configs.path.test_file))
         # self.preprocessed_train = self.preprocessing_pipeline.fit_transform(train)
         # self.preprocessed_test = self.preprocessing_pipeline.transform(test)
         # self.preprocessed_train.write_parquet(os.path.join(self.preprocessed_path, self.configs.path.train_file))
@@ -147,6 +145,3 @@ class feature_pipeline:
 if __name__ == "__main__":
     inst = feature_pipeline()
     inst.run()
-        
-        
-        
