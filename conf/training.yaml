@@ -2,6 +2,4 @@ training:
   xgboost:
     max_depth: 4
     n_estimators: 50
-
-
-  
+    objective: "binary:logistic"
