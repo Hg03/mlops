@@ -26,19 +26,36 @@ class training_pipeline:
     def tune_and_train(self):
         comet_ml_api_key = os.getenv("comet_ml_api_key")
         experiment = Experiment(api_key=comet_ml_api_key, project_name="purchase-prediction")
-        X_train, y_train = self.train.drop("purchasestatus"), self.train.select("purchasestatus")
-        X_test, y_test = self.test.drop("purchasestatus"), self.test.select("purchasestatus")
+
+        # Assuming self.train and self.test are Polars DataFrames
+        X_train = self.train.drop("purchasestatus")
+        y_train = self.train["purchasestatus"]
+        X_test = self.test.drop("purchasestatus")
+        y_test = self.test["purchasestatus"]
+
         model = XGBClassifier(n_estimators=10, max_depth=5, learning_rate=0.1, objective="binary:logistic")
-        # fit model
-        model.fit(X_train,y_train,eval_set=[(X_test, y_test)])
-        # make predictions
-        y_pred = model.predict(X_test)
-        debug_df = pl.DataFrame(X_test)
+        
+        # Convert Polars DataFrame to numpy for training
+        X_train_np = X_train.to_numpy()
+        y_train_np = y_train.to_numpy().ravel()  # Ensure y is a 1D array
+        X_test_np = X_test.to_numpy()
+        y_test_np = y_test.to_numpy().ravel()  # Ensure y is a 1D array
 
-        debug_df["pred"] = y_pred
-        debug_df["ground_truth"] = y_test
+        # Fit model
+        model.fit(X_train_np, y_train_np, eval_set=[(X_test_np, y_test_np)])
+        
+        # Make predictions
+        y_pred = model.predict(X_test_np)
 
-        experiment.log_table("prediction_debug_table.csv", debug_df)
+        # Convert numpy array to Polars Series
+        y_pred_series = pl.Series("pred", y_pred)
+        y_test_series = pl.Series("ground_truth", y_test_np)
+
+        # Add prediction and ground truth columns to the test DataFrame
+        debug_df = X_test.with_columns([y_pred_series, y_test_series])
+
+        # Log the DataFrame as a CSV to Comet.ml
+        experiment.log_table("prediction_debug_table.csv", debug_df.to_pandas())
         print('logged !!')
 
         
