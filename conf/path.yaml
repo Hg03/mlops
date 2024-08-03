@@ -9,3 +9,4 @@ path:
   raw: raw_data.paquet
   train_file: train.parquet
   test_file: test.parquet
+  model_file: model.pkl
